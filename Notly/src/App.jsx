@@ -8,9 +8,6 @@ import Login from './Login/Login';
 import Register from './Login/Register'; 
 import Detail from './Pages/Detail';
 import Community from './Pages/Community';
-
-
-
 function App() {
     return (
         <>
@@ -22,9 +19,6 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/community/:communityId" element={<Community />} />
-
-
-
             </Routes>
         </>
     );
