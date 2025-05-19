@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { jwtDecode } from 'jwt-decode'; // jwt-decode kütüphanesini kurduysanız
+import { jwtDecode } from 'jwt-decode'; 
 
-export default function ShareNote({ onNoteShared, onCancel, communities, setIsCreatingNote }) {
+export default function ShareNote({ onNoteShared, onCancel, setIsCreatingNote }) { 
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
-    const [selectedCommunityId, setSelectedCommunityId] = useState('');
+   
     const [userCourses, setUserCourses] = useState([]);
     const [selectedCourseId, setSelectedCourseId] = useState('');
     const [loading, setLoading] = useState(false);
@@ -21,10 +21,9 @@ export default function ShareNote({ onNoteShared, onCancel, communities, setIsCr
         if (token) {
             try {
                 const decodedToken = jwtDecode(token);
-             
+
                 console.log('--- ShareNote: Decoded JWT Token ---');
                 console.log(decodedToken);
-           
 
                 const nameIdentifier = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier';
                 const nameClaim = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name';
@@ -32,7 +31,6 @@ export default function ShareNote({ onNoteShared, onCancel, communities, setIsCr
                 setUserId(decodedToken[nameIdentifier]);
                 setUserFullName(decodedToken[nameClaim] || 'Unknown User');
                 console.log('--- ShareNote: UserFullName set from token ---', decodedToken[nameClaim] || 'Unknown User');
-
 
             } catch (err) {
                 console.error("ShareNote: Token decoding error:", err);
@@ -42,7 +40,6 @@ export default function ShareNote({ onNoteShared, onCancel, communities, setIsCr
             setError("Not paylaşmak için giriş yapmalısınız.");
         }
     }, []);
-
 
     useEffect(() => {
         if (userId) {
@@ -61,10 +58,8 @@ export default function ShareNote({ onNoteShared, onCancel, communities, setIsCr
                             'Authorization': `Bearer ${token}`
                         }
                     });
-                    // --- YENİ EKLENEN CONSOLE.LOG (Kullanıcının dersleri için) ---
                     console.log('--- ShareNote: Fetched User Courses (response.data) ---');
                     console.log(response.data);
-                    // -------------------------------------------------------------
                     if (Array.isArray(response.data)) {
                         setUserCourses(response.data);
                     } else {
@@ -83,7 +78,6 @@ export default function ShareNote({ onNoteShared, onCancel, communities, setIsCr
             fetchUserCourses();
         }
     }, [userId]);
-
 
     // --- Handle Note Submission ---
     const handleSubmit = async (e) => {
@@ -109,28 +103,22 @@ export default function ShareNote({ onNoteShared, onCancel, communities, setIsCr
         }
 
         const selectedCourse = userCourses.find(course => course.id.toString() === selectedCourseId.toString());
-        // Eğer ders seçilmemişse veya dersler yüklenmemişse 'Genel' olarak ayarla, aksi halde dersin adını kullan
         const courseName = selectedCourse ? selectedCourse.name : (userCourses.length === 0 && !selectedCourseId ? "Genel" : "");
-
 
         const noteData = {
             title: title.trim(),
             content: content.trim(),
             createdAt: new Date().toISOString(),
             userId: parseInt(userId),
-            userFullName: userFullName, // Token'dan gelen userFullName
+            userFullName: userFullName,
             courseId: selectedCourseId ? parseInt(selectedCourseId) : 0,
-            courseName: courseName, // Seçilen dersin adı veya "Genel"
+            courseName: courseName,
         };
 
-        if (selectedCommunityId) {
-            noteData.communityId = parseInt(selectedCommunityId);
-        }
+        
 
-      
         console.log('--- ShareNote: Sending noteData to backend ---');
         console.log(noteData);
-      
 
         const token = localStorage.getItem('token');
         if (!token) {
@@ -147,19 +135,17 @@ export default function ShareNote({ onNoteShared, onCancel, communities, setIsCr
                 }
             });
 
-            
             console.log('--- ShareNote: Note added successfully (response.data from POST) ---');
             console.log(response.data);
-          
 
             setSuccess(true);
             setTitle('');
             setContent('');
-            setSelectedCommunityId('');
+            // setSelectedCommunityId(''); // Kaldırıldı
             setSelectedCourseId('');
 
             if (onNoteShared) {
-                onNoteShared(response.data); 
+                onNoteShared(response.data);
             }
             setTimeout(() => {
                 setSuccess(false);
@@ -199,7 +185,6 @@ export default function ShareNote({ onNoteShared, onCancel, communities, setIsCr
         }
     };
 
-
     return (
         <div className="flex justify-center items-start py-8 w-full">
             <div className="bg-white p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-2xl">
@@ -235,29 +220,7 @@ export default function ShareNote({ onNoteShared, onCancel, communities, setIsCr
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Community Dropdown */}
-                    {communities && communities.length > 0 && (
-                        <div>
-                            <label htmlFor="community" className="block text-sm font-medium text-gray-700 mb-1">
-                                Topluluk (İsteğe Bağlı)
-                            </label>
-                            <select
-                                id="community"
-                                value={selectedCommunityId}
-                                onChange={(e) => setSelectedCommunityId(e.target.value)}
-                                className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                            >
-                                <option value="">Bir Topluluk Seçin (Opsiyonel)</option>
-                                {communities.map(community => (
-                                    <option key={community.id} value={community.id}>
-                                        {community.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
-
-                    {/* User Courses Dropdown */}
+                    
                     <div>
                         <label htmlFor="course" className="block text-sm font-medium text-gray-700 mb-1">
                             Ders

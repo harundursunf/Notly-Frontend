@@ -2,11 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { jwtDecode } from 'jwt-decode'; 
-import LikeButton from './LikeButton'; 
+import { jwtDecode } from 'jwt-decode';
+import LikeButton from './LikeButton';
+
 const Icons = {
     Calendar: '📅',
-    Community: '👥',
+    // Community: '👥', // Community ikonu kaldırıldı
     Note: '📄',
     ArrowLeft: '⬅️',
     CourseDefault: '📚',
@@ -20,39 +21,32 @@ const Detail = () => {
     const [loadingNote, setLoadingNote] = useState(true);
     const [noteError, setNoteError] = useState(null);
 
-    // Giriş yapmış kullanıcı bilgileri için state'ler
     const [loggedInUserId, setLoggedInUserId] = useState(null);
     const [loggedInUserFullName, setLoggedInUserFullName] = useState('');
 
-    // Sol menüdeki Top Kurslar için state'ler (önceki gibi kalabilir)
     const [topCoursesForSidebar, setTopCoursesForSidebar] = useState([]);
     const [loadingSidebar, setLoadingSidebar] = useState(true);
     const [sidebarError, setSidebarError] = useState(null);
     const [totalNotesCountForSidebar, setTotalNotesCountForSidebar] = useState(0);
 
-    // Giriş yapmış kullanıcı bilgilerini token'dan çek
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (token) {
             try {
                 const decodedToken = jwtDecode(token);
-                // Token'ınızdaki claim adları farklı olabilir, bunları backend'inizle doğrulayın
                 const nameIdentifierClaim = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier';
                 const nameClaim = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name';
-                
+
                 const userIdFromToken = decodedToken[nameIdentifierClaim];
                 setLoggedInUserId(userIdFromToken ? parseInt(userIdFromToken, 10) : null);
                 setLoggedInUserFullName(decodedToken[nameClaim] || '');
                 console.log("DetailPage: LoggedInUser ID:", userIdFromToken, "Name:", decodedToken[nameClaim]);
             } catch (error) {
                 console.error("DetailPage: Token decode error:", error);
-                // Kullanıcı bilgileri alınamazsa, beğeni butonu düzgün çalışmayabilir
-                // veya bazı özellikler kısıtlanabilir.
             }
         }
     }, []);
 
-    // --- Tek Bir Notun Detaylarını Çekmek ---
     useEffect(() => {
         const fetchNoteDetail = async () => {
             if (!noteIdFromUrl) {
@@ -74,8 +68,6 @@ const Detail = () => {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 console.log('--- DetailPage: NOT DETAYI (response.data) ---');
-                // KONTROL: Backend'den gelen yanıtta userFullName, courseName,
-                // likesCount, isLikedByCurrentUser, ve currentUserLikeId alanları dolu mu?
                 console.log(response.data);
 
                 const fetchedNote = response.data;
@@ -86,12 +78,9 @@ const Detail = () => {
                     courseId: fetchedNote.courseId,
                     author: fetchedNote.userFullName || 'Yazar Bilinmiyor',
                     authorAvatar: fetchedNote.userProfilePictureUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(fetchedNote.userFullName || 'User')}&background=random&color=fff&rounded=true&bold=true`,
-                    
-                    // LikeButton için gerekli props'lar
                     likesCount: fetchedNote.likesCount || 0,
                     isLikedByCurrentUser: fetchedNote.isLikedByCurrentUser || false,
-                    currentUserLikeId: fetchedNote.currentUserLikeId || null, // Beğeninin kendi ID'si
-
+                    currentUserLikeId: fetchedNote.currentUserLikeId || null,
                     date: new Date(fetchedNote.createdAt || fetchedNote.publishDate).toLocaleDateString('tr-TR'),
                     description: fetchedNote.content || 'İçerik bulunmuyor.',
                 });
@@ -109,9 +98,8 @@ const Detail = () => {
         };
 
         fetchNoteDetail();
-    }, [noteIdFromUrl]); // noteIdFromUrl değiştiğinde not detaylarını yeniden çek
+    }, [noteIdFromUrl]);
 
-    // --- Sol Menü İçin Top Kursları Çekmek (İstemci Tarafı Hesaplama) ---
     useEffect(() => {
         const fetchAllNotesAndDeriveTopCoursesForSidebar = async () => {
             setLoadingSidebar(true);
@@ -161,10 +149,7 @@ const Detail = () => {
         navigate(-1);
     };
 
-    // LikeButton'dan gelen state değişikliklerini handle etmek için callback
     const handleDetailLikeChange = (targetNoteId, { newLikesCount, newIsLiked, newCurrentUserLikeId }) => {
-        // Bu sayfa sadece tek bir notu gösterdiği için, gelen targetNoteId'nin
-        // mevcut noteDetail.id ile eşleştiğini kontrol edebiliriz (ekstra güvenlik)
         if (noteDetail && noteDetail.id === targetNoteId) {
             setNoteDetail(prevDetails => ({
                 ...prevDetails,
@@ -174,13 +159,12 @@ const Detail = () => {
             }));
         }
     };
-    
-    // Eski handleLikeOnDetailPage fonksiyonuna artık gerek yok, LikeButton kendi API çağrısını yapıyor.
 
     const renderSidebar = () => (
         <div className="bg-white rounded-xl shadow-lg p-6 sticky top-8">
             <h3 className="text-xl font-semibold text-gray-700 mb-6 flex items-center">
-                <span className="text-indigo-500 mr-3 text-2xl">{Icons.Community}</span> Popüler Dersler
+                {/* <span className="text-indigo-500 mr-3 text-2xl">{Icons.Community}</span>  SİMGE KULLANIMI KALDIRILDI */}
+                Popüler Dersler
             </h3>
             {loadingSidebar ? <p>Yükleniyor...</p> : sidebarError ? <p className="text-red-500 text-sm">{sidebarError}</p> : (
                 <ul className="space-y-3">
@@ -193,9 +177,9 @@ const Detail = () => {
                     {topCoursesForSidebar.map(course => (
                         <Link
                             key={course.id}
-                            to={`/notes?courseId=${course.id}`} // NotesFeed'e filtre ile git
+                            to={`/notes?courseId=${course.id}`}
                             className={`flex items-center p-3 rounded-lg transition-colors duration-200 cursor-pointer ${
-                                noteDetail?.courseId === course.id // Eğer görüntülenen not bu kursa aitse vurgula
+                                noteDetail?.courseId === course.id
                                 ? 'bg-indigo-100 text-indigo-800 font-bold'
                                 : 'bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium'
                             }`}
@@ -259,24 +243,22 @@ const Detail = () => {
                                     <span className="flex items-center mr-6">
                                         {Icons.Calendar} <span className="ml-1.5">{noteDetail.date}</span>
                                     </span>
-                                    {/* ESKİ BEĞENİ BUTONU/TEXTİ KALDIRILDI, YERİNE LikeButton GELDİ */}
-                                    {loggedInUserId && noteDetail.id && ( // Sadece kullanıcı ve not bilgisi varsa LikeButton'ı göster
+                                    {loggedInUserId && noteDetail.id && (
                                         <LikeButton
                                             noteId={noteDetail.id}
-                                            noteTitle={noteDetail.title} // LikeButton'a not başlığını gönderiyoruz
+                                            noteTitle={noteDetail.title}
                                             initialLikesCount={noteDetail.likesCount}
                                             initialIsLiked={noteDetail.isLikedByCurrentUser}
                                             initialCurrentUserLikeId={noteDetail.currentUserLikeId}
-                                            currentUserId={loggedInUserId} // Giriş yapmış kullanıcının ID'si
-                                            currentUserFullName={loggedInUserFullName} // Giriş yapmış kullanıcının adı
-                                            onLikeStateChange={handleDetailLikeChange} // Callback fonksiyonu
+                                            currentUserId={loggedInUserId}
+                                            currentUserFullName={loggedInUserFullName}
+                                            onLikeStateChange={handleDetailLikeChange}
                                         />
                                     )}
                                 </div>
-                               
                                 {noteDetail && noteDetail.id && (
-                                    <div className="mt-10"> 
-                                        
+                                    <div className="mt-10">
+                                        {/* Yorumlar buraya gelebilir */}
                                     </div>
                                 )}
                             </div>

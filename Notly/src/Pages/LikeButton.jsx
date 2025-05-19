@@ -22,7 +22,7 @@ const LikeButton = ({
     const [currentUserLikeId, setCurrentUserLikeId] = useState(initialCurrentUserLikeId);
     const [isLoading, setIsLoading] = useState(false);
 
-    // Props değiştiğinde local state'i güncelle (parent'tan gelen veri değişirse)
+  
     useEffect(() => {
         setIsLiked(initialIsLiked);
         setLikesCount(initialLikesCount);
@@ -82,7 +82,7 @@ const LikeButton = ({
                 }
                 console.log('Note liked, API response:', response.data);
 
-            } else { // Kullanıcı beğenmekten vazgeçmek istiyor (isLiked true idi, false olacak)
+            } else { 
                 if (!previousState.currentUserLikeId) {
                     console.error("Beğeni kaldırılamıyor: Mevcut beğeniye ait ID (currentUserLikeId) eksik!");
                  
@@ -108,11 +108,11 @@ const LikeButton = ({
         } catch (error) {
             console.error("Like/Unlike işlemi sırasında hata:", error.response?.data || error.message);
             alert("Beğeni işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.");
-            // Hata durumunda optimistic update'i geri al
+            
             setIsLiked(previousState.isLiked);
             setLikesCount(previousState.likesCount);
             setCurrentUserLikeId(previousState.currentUserLikeId);
-            // Parent'ı da bilgilendirerek state'i geri almasını sağla (opsiyonel)
+            
              if (onLikeStateChange) {
                 onLikeStateChange(noteId, { ...previousState });
             }
@@ -124,7 +124,7 @@ const LikeButton = ({
     return (
         <button
             onClick={(e) => { e.stopPropagation(); handleLikeToggle(); }}
-            disabled={isLoading || !currentUserId} // Kullanıcı ID'si yoksa da butonu disable et
+            disabled={isLoading || !currentUserId} 
             title={!currentUserId ? "Beğeni yapmak için giriş yapmalısınız" : (isLiked ? "Beğenmekten vazgeç" : "Beğen")}
             className={`flex items-center transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-opacity-50 ${
                 isLiked

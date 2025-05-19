@@ -20,8 +20,11 @@ const AddedCourse = ({ userId, token, userFullName, onCourseAdded, setIsAddingCo
         try {
             const payload = {
                 name: courseName,
-                userId: parseInt(userId), // Ensure userId is an integer if your backend expects it
-                userFullName: userFullName // Included as per your Swagger definition
+                userId: parseInt(userId), 
+                
+                
+                userFullName: userFullName 
+                
             };
 
             const response = await axios.post(

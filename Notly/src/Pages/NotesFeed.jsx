@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link, useLocation } from 'react-router-dom'; // useLocation'a gerek kalmayabilir
+import { Link, useLocation } from 'react-router-dom'; 
 import ShareNote from './ShareNote';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
@@ -42,13 +42,13 @@ const NotesFeed = () => {
                     id: note.id,
                     title: note.title,
                     courseName: note.courseName || 'Bilinmiyor',
-                    courseId: note.courseId, // Bu alanın backend'den geldiğinden emin olun!
-                    communityId: note.communityId || null, // Eğer hala varsa
+                    courseId: note.courseId, 
+                    communityId: note.communityId || null, 
                     author: note.userFullName || 'Yazar Bilinmiyor',
                     authorAvatar: note.userProfilePictureUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(note.userFullName || 'User')}&background=random&color=fff&rounded=true&bold=true`,
                     likes: note.likesCount || 0,
                     commentsCount: note.commentsCount || 0,
-                    date: new Date(note.publishDate || note.createdAt).toLocaleDateString('tr-TR'), // Tarih formatı
+                    date: new Date(note.publishDate || note.createdAt).toLocaleDateString('tr-TR'), 
                     description: note.content || note.description || 'İçerik bulunmuyor.',
                 }));
                 setNotes(formattedNotes);
@@ -110,7 +110,7 @@ const NotesFeed = () => {
 
     const handleNoteShared = (newNoteResponse) => {
         console.log("NotesFeed: Yeni not paylaşıldı (backend response):", newNoteResponse);
-        // Gelen newNoteResponse'un formatının diğer notlarla aynı olduğundan emin olmalıyız.
+        
         const formattedNewNote = {
             id: newNoteResponse.id,
             title: newNoteResponse.title,
@@ -249,13 +249,7 @@ const NotesFeed = () => {
                                                 >
                                                     {Icons.ThumbUp} <span className="ml-1.5 font-medium">{note.likes}</span>
                                                 </button>
-                                                <Link
-                                                    to={`/not/${note.id}#comments`}
-                                                    onClick={(e) => handleCommentClick(e, note.id)}
-                                                    className="flex items-center text-blue-600 hover:text-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50"
-                                                >
-                                                    {Icons.Comment} <span className="ml-1.5 font-medium">{note.commentsCount}</span>
-                                                </Link>
+                                                
                                            </div>
                                        </div>
                                        <Link
