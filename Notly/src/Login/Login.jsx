@@ -1,18 +1,78 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios'; // Axios'u import ediyoruz
 
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [errorMessage, setErrorMessage] = useState('');
+    const [loading, setLoading] = useState(false); // Yüklenme durumu için state
+    const [error, setError] = useState(''); // Hata mesajı için state
     const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => { // Async fonksiyon yaptık
         e.preventDefault();
-        setErrorMessage('');
-        console.log('Giriş Denemesi:', { email, password });
-        console.log('Giriş Başarılı (Simülasyon)');
-        navigate('/');
+        setError(''); // Her denemede hatayı temizle
+
+        setLoading(true); // Yükleniyor durumunu başlat
+        try {
+            // Backend'deki giriş endpoint'inize POST isteği gönderin
+            const response = await axios.post('https://localhost:7119/api/Auth/login', {
+                email,
+                password,
+            });
+
+            console.log('Giriş Başarılı:', response.data);
+
+            // ************************************
+            // ÖNEMLİ: Backend'den gelen token'ı localStorage'a kaydet
+            // response.data'nın yapısını kontrol ederek token'ın hangi alanda geldiğini doğrulayın.
+            // Sizin çıktınızda 'accessToken' alanında geliyordu.
+            if (response.data && response.data.accessToken) {
+                 localStorage.setItem('token', response.data.accessToken);
+                 console.log('Token localStorage kaydedildi.');
+            } else {
+                 console.warn('Giriş başarılı ancak token yanıtında bulunamadı.');
+                 setError('Giriş başarılı ancak kimlik doğrulama bilgisi alınamadı.');
+                 // Token alınamazsa yönlendirme yapmamak veya hata göstermek daha doğru olabilir.
+                 setLoading(false); // Yükleniyor durumunu bitir
+                 return; // Token yoksa devam etme
+            }
+            // ************************************
+
+
+            // Başarılı giriş sonrası ana sayfaya veya yönlendirmek istediğiniz yere git
+            navigate('/notes');
+
+        } catch (err) {
+            console.error('Giriş Hatası:', err);
+            // Hata durumunda kullanıcıya bilgi ver
+             if (axios.isAxiosError(err)) { // Axios hatası mı kontrol et
+                 if (err.response) {
+                    // Backend'den gelen hata yanıtı var
+                    // Backend'inizin döndürdüğü hata formatına göre burayı ayarlamanız gerekebilir.
+                    const backendError = err.response.data;
+                    if (backendError && backendError.message) {
+                         setError(backendError.message);
+                    } else if (typeof backendError === 'string') {
+                         setError(backendError);
+                    }
+                    else {
+                        setError(backendError.title || 'Giriş sırasında bir hata oluştu. Lütfen bilgilerinizi kontrol edin.');
+                    }
+                } else if (err.request) {
+                    // İstek gönderildi ancak yanıt alınamadı (ağ hatası vb.)
+                    setError('Sunucuya ulaşılamadı. Lütfen backend sunucusunun çalıştığından emin olun.');
+                } else {
+                    // İstek oluşturulurken bir hata oluştu
+                    setError('İstek hazırlanırken bir hata oluştu. Lütfen tekrar deneyin.');
+                }
+             } else {
+                 // Axios hatası olmayan diğer hatalar
+                 setError('Beklenmedik bir hata oluştu.');
+             }
+        } finally {
+            setLoading(false); // Yükleniyor durumunu bitir
+        }
     };
 
     return (
@@ -41,9 +101,10 @@ const Login = () => {
                         </Link>
                     </p>
 
-                    {errorMessage && (
+                    {/* Hata mesajını göster */}
+                    {error && (
                         <div className="mb-4 text-sm text-red-600 text-center">
-                            {errorMessage}
+                            {error}
                         </div>
                     )}
 
@@ -101,9 +162,10 @@ const Login = () => {
                         <div className="mt-8">
                             <button
                                 type="submit"
-                                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-base font-medium rounded-md text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-300 ease-in-out transform hover:scale-105 shadow-lg hover:shadow-xl"
+                                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-base font-medium rounded-md text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-300 ease-in-out transform hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={loading} // Yüklenirken butonu devre dışı bırak
                             >
-                                Giriş Yap
+                                {loading ? 'Giriş Yapılıyor...' : 'Giriş Yap'} {/* Yüklenme durumuna göre buton metni */}
                             </button>
                         </div>
                     </form>

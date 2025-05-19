@@ -43,7 +43,7 @@ const Homepage = () => {
                         Aradığın notlara kolayca ulaş, bilgi paylaşımıyla akademik başarıya ulaş.
                     </p>
                     <button
-                        onClick={() => navigate('/notes')}
+                        onClick={() => navigate('/login')}
                         className="bg-white text-indigo-700 font-semibold px-6 py-3 rounded-xl shadow hover:bg-gray-100 transition"
                     >
                         Göz At

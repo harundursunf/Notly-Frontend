@@ -1,24 +1,76 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios'; // Axios'u import ediyoruz
 
 const Register = () => {
-    const [name, setName] = useState('');
+    const [name, setName] = useState(''); // Kullanıcının girdiği ad/soyad veya kullanıcı adı
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
+    // const [confirmPassword, setConfirmPassword] = useState(''); // Şifreyi Onayla state'i kaldırıldı
+    const [loading, setLoading] = useState(false); // Yüklenme durumu için state
+    const [error, setError] = useState(''); // Hata mesajı için state (string olacak)
     const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => { // Async fonksiyon yaptık
         e.preventDefault();
+        setError(''); 
 
-        if (password !== confirmPassword) {
-            alert('Şifreler eşleşmiyor!');
-            return;
+        setLoading(true); 
+        try {
+
+            const response = await axios.post('https://localhost:7119/api/Auth/register', {
+                username: name, // Frontend'deki 'name' state'ini backend'e 'username' olarak gönder
+                email,
+                password,
+            });
+
+            console.log('Kayıt Başarılı:', response.data);
+            // Başarılı kayıt sonrası kullanıcıyı giriş sayfasına yönlendir
+            navigate('/login');
+
+        } catch (err) {
+            console.error('Kayıt Hatası:', err);
+            // Hata durumunda kullanıcıya bilgi ver
+            if (axios.isAxiosError(err)) { // Axios hatası mı kontrol et
+                if (err.response) {
+                    // Backend'den gelen hata yanıtı var
+                    const backendError = err.response.data;
+
+                    // Backend'in döndürdüğü hata yapısını kontrol et
+                    if (backendError && backendError.errors) {
+                        // ASP.NET Core ValidationProblemDetails gibi bir yapı
+                        const validationErrors = backendError.errors;
+                        let errorMessages = [];
+                        for (const key in validationErrors) {
+                            if (validationErrors.hasOwnProperty(key)) {
+
+                                const fieldErrors = validationErrors[key].join(' ');
+                                errorMessages.push(`${key}: ${fieldErrors}`); // Alan adını da ekleyerek daha bilgilendirici yap
+                            }
+                        }
+                        setError(errorMessages.join(' | ')); // Hata mesajlarını ayırarak göster
+                    } else if (backendError && (backendError.message || typeof backendError === 'string')) {
+                         // Daha basit bir hata mesajı yapısı veya sadece string yanıt
+                        setError(backendError.message || backendError);
+                    }
+                     else {
+                        // Beklenmedik bir hata yanıtı formatı
+                        setError(backendError.title || 'Kayıt sırasında beklenmedik bir hata oluştu.');
+                    }
+                } else if (err.request) {
+                    // İstek gönderildi ancak yanıt alınamadı (ağ hatası vb.)
+                    setError('Sunucuya ulaşılamadı. Lütfen backend sunucusunun çalıştığından emin olun.');
+                } else {
+                    // İstek oluşturulurken bir hata oluştu
+                    setError('İstek hazırlanırken bir hata oluştu. Lütfen tekrar deneyin.');
+                }
+            } else {
+                 // Axios hatası olmayan diğer hatalar
+                 setError('Beklenmedik bir hata oluştu.');
+            }
+        } finally {
+            setLoading(false); // Yükleniyor durumunu bitir
         }
-
-        console.log('Kayıt Denemesi:', { name, email, password });
-        alert('Kayıt Başarılı (Simülasyon)');
-        navigate('/login');
     };
 
     return (
@@ -49,17 +101,18 @@ const Register = () => {
                     <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                         <div className="rounded-md shadow-sm -space-y-px">
                             <div>
+                                {/* Label ve input artık kullanıcı adını temsil ediyor */}
                                 <label htmlFor="name" className="sr-only">
-                                    Adınız Soyadınız
+                                    Kullanıcı Adınız
                                 </label>
                                 <input
-                                    id="name"
-                                    name="name"
+                                    id="name" // ID'yi şimdilik name olarak bırakabiliriz veya username yapabiliriz
+                                    name="name" // Name attribute'u da aynı şekilde
                                     type="text"
-                                    autoComplete="name"
+                                    autoComplete="username" // autocomplete'i username olarak ayarla
                                     required
                                     className="appearance-none rounded-md relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                                    placeholder="Adınız Soyadınız"
+                                    placeholder="Kullanıcı Adınız" // Placeholder'ı güncelle
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                 />
@@ -96,30 +149,23 @@ const Register = () => {
                                     onChange={(e) => setPassword(e.target.value)}
                                 />
                             </div>
-                            <div className="mt-3">
-                                <label htmlFor="confirm-password" className="sr-only">
-                                    Şifreyi Onayla
-                                </label>
-                                <input
-                                    id="confirm-password"
-                                    name="confirm-password"
-                                    type="password"
-                                    autoComplete="new-password"
-                                    required
-                                    className="appearance-none rounded-md relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                                    placeholder="Şifreyi Onayla"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                />
-                            </div>
+                           
                         </div>
+
+                        {/* Hata mesajını göster */}
+                        {error && (
+                            <div className="text-sm text-red-600 text-center mt-4">
+                                {error}
+                            </div>
+                        )}
 
                         <div className="mt-6">
                             <button
                                 type="submit"
-                                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-200 ease-in-out transform hover:scale-105"
+                                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-200 ease-in-out transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={loading} // Yüklenirken butonu devre dışı bırak
                             >
-                                Kayıt Ol
+                                {loading ? 'Kaydediliyor...' : 'Kayıt Ol'} {/* Yüklenme durumuna göre buton metni */}
                             </button>
                         </div>
                     </form>
