@@ -1,14 +1,16 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom'; // Import Link for navigation
 
-import React from 'react';
+// Icon components (assuming these are defined as in your original code)
 const IconBackDefault = ({ className = "w-5 h-5" }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className={className}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
   </svg>
 );
 
-const IconSettingsDefault = ({ className = "w-5 h-5 sm:w-6 sm:h-6" }) => ( // Bu ikon kullanılacak
+const IconSettingsDefault = ({ className = "w-5 h-5 sm:w-6 sm:h-6" }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.646.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.242 1.417l-.97.97a1.125 1.125 0 01-1.667 0l-.97-.97a1.125 1.125 0 01.242-1.417l-1.296-2.247a1.125 1.125 0 01-1.37-.49l-1.217-.456c-.355.133-.75.072-1.075-.124a1.125 1.125 0 01-.22-.127c-.332-.183-.582-.495-.646-.87l-.213-1.281zm-2.678 14.082c.09.542.56.94 1.11.94h2.594c.55 0 1.02-.398 1.11-.94l.213-1.281c.063-.374.313.686.646-.87.074-.04.147.083.22.127.325.196.72.257 1.075.124l1.217.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.242 1.417l-.97.97a1.125 1.125 0 01-1.667 0l-.97-.97a1.125 1.125 0 01.242-1.417l-1.296-2.247a1.125 1.125 0 01-1.37-.49l-1.217-.456c-.355-.133-.75-.072-1.075-.124a1.125 1.125 0 01-.22-.127c-.332-.183-.582-.495-.646-.87l-.213-1.281z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.646.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.242 1.417l-.97.97a1.125 1.125 0 01-1.667 0l-.97-.97a1.125 1.125 0 01.242-1.417l-1.296-2.247a1.125 1.125 0 01-1.37-.49l-1.217-.456c-.355.133-.75.072-1.075-.124a1.125 1.125 0 01-.22-.127c-.332-.183-.582-.495-.646-.87l-.213-1.281zm-2.678 14.082c.09.542.56.94 1.11.94h2.594c.55 0 1.02-.398 1.11-.94l.213-1.281c.063-.374.313.686.646-.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.242 1.417l-.97.97a1.125 1.125 0 01-1.667 0l-.97-.97a1.125 1.125 0 01.242-1.417l-1.296-2.247a1.125 1.125 0 01-1.37-.49l-1.217-.456c-.355-.133-.75-.072-1.075-.124a1.125 1.125 0 01-.22-.127c-.332-.183-.582-.495-.646-.87l-.213-1.281z" />
     <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
   </svg>
 );
@@ -25,26 +27,25 @@ const IconLogoutDefault = ({ className = "w-5 h-5" }) => (
   </svg>
 );
 
-const IconEditDefault = ({ className = "w-4 h-4" }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}>
-    <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
-    <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
-  </svg>
-);
-
 const IconUniversityDefault = ({ className = "w-5 h-5" }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}>
     <path d="M10.394 2.093a1 1 0 00-.788 0l-7 4A1 1 0 002 7v8a1 1 0 00.586.903l7 4a1 1 0 00.828 0l7-4A1 1 0 0018 15V7a1 1 0 00-.586-.903l-7-4zM10 14.61L4.097 11.091V7.909L10 11.39V14.61zm0-4.84L15.903 7.91v3.182L10 13.057V9.77zm6-3.627v.002l-6 3.428-6-3.428V6.143l6-3.428 6 3.428z" />
   </svg>
 );
 
+const IconKebabMenu = ({ className = "w-5 h-5" }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zm0 5.25a.75.75 0 110-1.5.75.75 0 010 1.5zm0 5.25a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+    </svg>
+);
+
 const baseIcons = {
   Back: IconBackDefault,
-  Settings: IconSettingsDefault, 
+  Settings: IconSettingsDefault,
   Error: IconErrorDefault,
   Logout: IconLogoutDefault,
-  Edit: IconEditDefault,
   University: IconUniversityDefault,
+  KebabMenu: IconKebabMenu,
 };
 
 const DynamicIcon = ({ icon, className, defaultClassName }) => {
@@ -61,7 +62,8 @@ const DynamicIcon = ({ icon, className, defaultClassName }) => {
 
 const ProfileHeader = ({
   user,
-  onGoToHomepage,
+  homePath = "/notes", 
+  logoSrc = "/logo3.jpg", 
   avatarError,
   avatarSuccess,
   postsCount = 0,
@@ -74,19 +76,40 @@ const ProfileHeader = ({
   onLogout,
 }) => {
   const icons = { ...baseIcons, ...customIcons };
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const menuRef = useRef(null);
 
- 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      const menuButton = document.getElementById('user-menu-button');
+      if (menuButton && menuButton.contains(event.target)) {
+        return;
+      }
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    if (isUserMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isUserMenuOpen]);
+
   if (pageLoadError) {
     return (
       <div className="p-6 sm:p-10 bg-red-50 rounded-lg m-4 sm:m-6 md:m-8 border border-red-200 text-center flex flex-col items-center justify-center min-h-[400px] relative">
-        {onGoToHomepage && (
-          <button
-            onClick={onGoToHomepage}
+        {homePath && ( // Changed to use homePath for Link
+          <Link
+            to={homePath}
             className="absolute top-4 left-4 sm:top-6 sm:left-6 inline-flex items-center text-sm text-blue-600 hover:text-blue-700 font-semibold group transition-colors duration-200 py-2 px-3 rounded-md hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
           >
             <DynamicIcon icon={icons.Back} className="w-5 h-5 mr-1.5 transform transition-transform group-hover:-translate-x-0.5" />
             Anasayfaya Dön
-          </button>
+          </Link>
         )}
         <div className="py-8">
           <DynamicIcon icon={icons.Error} className="w-20 h-20 text-red-400 mb-6" />
@@ -109,7 +132,6 @@ const ProfileHeader = ({
     );
   }
 
-
   const StatItem = ({ count, label }) => (
     <div className="text-center px-2 py-1 group">
       <p className="text-2xl sm:text-3xl font-bold text-slate-700 group-hover:text-indigo-600 transition-colors duration-200">{count}</p>
@@ -119,58 +141,73 @@ const ProfileHeader = ({
 
   return (
     <>
-      <div className="px-4 sm:px-6 py-2.5 sm:py-3 border-b border-slate-200 flex justify-between items-center bg-slate-100 rounded-t-2xl">
-        <button
-          onClick={onGoToHomepage}
-          className="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-700 font-semibold group transition-all duration-200 p-2.5 rounded-lg hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-100 transform hover:scale-105"
+      <div className="px-4 sm:px-6 py-2.5 sm:py-3 border-b border-slate-200 flex justify-between items-center bg-white rounded-t-2xl">
+        {/* === MODIFIED SECTION: Logo as Homepage Link === */}
+        <Link 
+          to={homePath} 
+          className="flex-shrink-0 flex items-center group" 
           title="Anasayfaya Dön"
         >
-          <DynamicIcon icon={icons.Back} className="w-5 h-5 mr-0 sm:mr-1.5 transition-transform group-hover:-translate-x-0.5" />
-          <span className="hidden sm:inline">Anasayfa</span>
-        </button>
-
-        <button
-          onClick={onGoToHomepage}
-          title="Anasayfaya Git"
-          className="focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-100 rounded-md mx-auto p-1"
-        >
           <img
-            src="/logo3.jpg"
+            src={logoSrc}
             alt="Site Logosu"
-            className="h-10 sm:h-12 md:h-14 object-contain transition-transform duration-200 ease-in-out hover:scale-110"
+            className="h-9 sm:h-10 md:h-11 object-contain transition-transform duration-300 ease-in-out group-hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-white rounded-sm"
           />
-        </button>
-
        
-        <div className="flex items-center space-x-1.5 sm:space-x-2 md:space-x-3">
+        </Link>
+    
+
+        <div className="flex items-center">
           {isOwnProfile && (
-            <>
-          
+            <div className="relative">
               <button
-                onClick={onEditProfile}
-                title="Profili Düzenle"
-                className="text-slate-600 hover:text-indigo-600 p-2 sm:p-2.5 rounded-full hover:bg-slate-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-100 transform hover:scale-110"
+                id="user-menu-button"
+                onClick={() => setIsUserMenuOpen(prev => !prev)}
+                title="Kullanıcı Menüsü"
+                className="text-slate-600 hover:text-indigo-600 p-2 sm:p-2.5 rounded-full hover:bg-slate-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-100"
               >
-                <DynamicIcon icon={icons.Settings} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />
+                <DynamicIcon icon={icons.KebabMenu} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />
               </button>
-              
-              <button
-                onClick={onLogout}
-                title="Çıkış Yap"
-                className="flex items-center text-xs sm:text-sm font-semibold text-red-600 hover:text-red-50 bg-red-50 hover:bg-red-600 hover:text-white border border-red-600 p-1.5 sm:px-3 sm:py-1.5 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-slate-100 transform hover:scale-105"
-              >
-                <DynamicIcon icon={icons.Logout} className="w-4 h-4 sm:w-5 sm:h-5 mr-0 sm:mr-1.5" />
-                <span className="hidden sm:inline">Çıkış</span>
-                <span className="sm:hidden">
-                  <DynamicIcon icon={icons.Logout} className="w-5 h-5" />
-                </span>
-              </button>
-            </>
+
+              {isUserMenuOpen && (
+                <div
+                  ref={menuRef}
+                  className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl z-20 py-1 border border-slate-200 transition-opacity duration-150 ease-out"
+                  style={{ opacity: 1 }} 
+                >
+                  <button
+                    onClick={() => {
+                      if(onEditProfile) onEditProfile();
+                      setIsUserMenuOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 hover:text-indigo-600 flex items-center transition-colors duration-150 rounded-t-md group" 
+                  >
+                    <DynamicIcon icon={icons.Settings} className="w-5 h-5 mr-3 text-slate-500 group-hover:text-indigo-500 transition-colors duration-150" />
+                    Profili Düzenle
+                  </button>
+                  <div className="border-t border-slate-100 mx-1"></div>
+                  <button
+                    onClick={() => {
+                      if(onLogout) onLogout();
+                      setIsUserMenuOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center transition-colors duration-150 rounded-b-md group" // Added group for icon hover
+                  >
+                    <DynamicIcon icon={icons.Logout} className="w-5 h-5 mr-3 group-hover:text-red-700 transition-colors duration-150" />
+                    Çıkış Yap
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+          {!isOwnProfile && (
+            
+            <div className="w-[44px] h-[44px] sm:w-[48px] sm:h-[48px]"></div> 
           )}
         </div>
       </div>
 
-      {/* ANA PROFİL İÇERİĞİ */}
+    
       <div className="p-6 sm:p-8 md:p-10">
         <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left">
           <div className="flex-shrink-0 mb-6 sm:mb-0 sm:mr-8 md:mr-10 relative group cursor-pointer" title={isOwnProfile ? "Profil fotoğrafını değiştir" : ""}>
@@ -179,11 +216,9 @@ const ProfileHeader = ({
               alt={`${user.name || user.username} avatarı`}
               className="w-36 h-36 sm:w-40 sm:h-40 md:w-44 md:h-44 rounded-full border-4 border-white object-cover shadow-xl group-hover:shadow-2xl transition-all duration-300 ring-4 ring-indigo-500/50 group-hover:ring-indigo-500"
             />
-          
           </div>
 
           <div className="flex-grow mt-4 sm:mt-0">
-           
             <div className="mb-4">
               <h1 className="text-3xl lg:text-4xl font-bold text-slate-900 tracking-tight">
                 {user.username || user.name}
@@ -192,22 +227,18 @@ const ProfileHeader = ({
                 <p className="text-lg text-slate-500 font-medium">{user.name}</p>
               )}
             </div>
-
-           
-            {isOwnProfile && (
-              <div className="mt-2 mb-5 flex flex-wrap justify-center sm:justify-start">
-                <button
-                  onClick={onEditProfile}
-                  className="inline-flex items-center px-6 py-3 text-base font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50"
-                >
-                  <DynamicIcon icon={icons.Edit} className="w-5 h-5 mr-2.5" />
-                  Profili Düzenle
+            
+            {!isOwnProfile && ( 
+              <div className="mt-2 mb-5 flex flex-wrap justify-center sm:justify-start gap-4">
+                <button className="inline-flex items-center px-6 py-3 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50">
+                  Takip Et
+                </button>
+                <button className="inline-flex items-center px-6 py-3 text-base font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-slate-400 focus:ring-opacity-50">
+                  Mesaj Gönder
                 </button>
               </div>
             )}
-            
 
-          
             <div className="flex sm:flex lg:hidden justify-center sm:justify-start space-x-6 md:space-x-8 border-y border-slate-200 py-4">
               <StatItem count={postsCount} label="Paylaşım" />
               <StatItem count={coursesCount} label="Ders" />
@@ -221,9 +252,8 @@ const ProfileHeader = ({
           </div>
         </div>
 
-        
         {(user.university || user.bio) && (
-          <div className="mt-10 pt-8 pb-6 border-t border-slate-200 text-left px-2 sm:px-0">
+            <div className="mt-10 pt-8 pb-6 border-t border-slate-200 text-left px-2 sm:px-0">
             {user.university && (
               <div className="mb-7 flex items-start space-x-3 sm:space-x-4">
                 <div className="flex-shrink-0 pt-1">
@@ -269,7 +299,6 @@ const ProfileHeader = ({
         )}
       </div>
 
-     
       <div className="sm:hidden flex justify-around py-5 border-t border-slate-200 bg-slate-100 px-2 rounded-b-2xl">
         <StatItem count={postsCount} label="Paylaşım" />
         <StatItem count={coursesCount} label="Ders" />

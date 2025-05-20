@@ -1,40 +1,100 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link, useLocation } from 'react-router-dom'; 
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import ShareNote from './ShareNote';
+import Detail from './Detail';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
+import Header from '../Components/notes/Header'; // Header.jsx yolunuzu kontrol edin
 
 const NotesFeed = () => {
     const [isCreatingNote, setIsCreatingNote] = useState(false);
+    const [viewingNoteId, setViewingNoteId] = useState(null);
+
     const [notes, setNotes] = useState([]);
     const [loadingNotes, setLoadingNotes] = useState(true);
     const [notesError, setNotesError] = useState(null);
+    const [sidebarError, setSidebarError] = useState(null);
 
     const [topCoursesAsCommunities, setTopCoursesAsCommunities] = useState([]);
     const [selectedCourseFilter, setSelectedCourseFilter] = useState(null); 
+    
+    const [currentUser, setCurrentUser] = useState(null);
+
+    const navigate = useNavigate();
+    const location = useLocation();
 
     const Icons = {
         Calendar: '📅',
         ThumbUp: '👍',
-        Comment: '💬', 
         Community: '👥', 
         Note: '📄',
-        PlusCircle: '➕',
+        PlusCircle: '➕', 
         CourseDefault: '📚', 
     };
+
+    useEffect(() => {
+        const queryParams = new URLSearchParams(location.search);
+        const courseIdFromUrl = queryParams.get('courseId');
+        if (courseIdFromUrl) {
+            setSelectedCourseFilter(parseInt(courseIdFromUrl, 10));
+        }
+    }, [location.search]);
+    
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            try {
+                const decodedToken = jwtDecode(token);
+                const nameClaimValue = decodedToken['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] || 'Kullanıcı';
+                const userIdClaim = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier';
+                const userId = decodedToken[userIdClaim];
+
+                if (userId) {
+                    const fetchUserDetailsForHeader = async () => {
+                        try {
+                            const response = await axios.get(`https://localhost:7119/api/Users/${userId}`, {
+                                headers: { 'Authorization': `Bearer ${token}` }
+                            });
+                            const userDataFromApi = response.data;
+                            setCurrentUser({
+                                name: userDataFromApi.fullName || nameClaimValue,
+                                avatarUrl: userDataFromApi.profilePictureUrl || 
+                                           `https://ui-avatars.com/api/?name=${encodeURIComponent(userDataFromApi.fullName || nameClaimValue)}&background=random&color=fff&rounded=true&bold=true&size=128`
+                            });
+                        } catch (apiError) {
+                            console.error("NotesFeed: Header için kullanıcı detayları çekilemedi, token verileri kullanılacak:", apiError);
+                            setCurrentUser({
+                                name: nameClaimValue,
+                                avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(nameClaimValue)}&background=random&color=fff&rounded=true&bold=true&size=128`
+                            });
+                        }
+                    };
+                    fetchUserDetailsForHeader();
+                } else {
+                    console.warn("NotesFeed: Header için token'da kullanıcı ID'si bulunamadı.");
+                    setCurrentUser({
+                        name: nameClaimValue,
+                        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(nameClaimValue)}&background=random&color=fff&rounded=true&bold=true&size=128`
+                    });
+                }
+            } catch (error) {
+                console.error("NotesFeed: Token decode hatası (currentUser için):", error);
+                setCurrentUser(null);
+            }
+        } else {
+            setCurrentUser(null);
+        }
+    }, []);
 
     const fetchNotes = async (token) => {
         setLoadingNotes(true);
         setNotesError(null);
-        setTopCoursesAsCommunities([]); 
+        setSidebarError(null);
 
         try {
             const response = await axios.get('https://localhost:7119/api/Notes', {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
-
-            console.log('--- NotesFeed: BACKEND\'DEN GELEN TÜM NOTLAR (response.data) ---');
-            console.log(response.data);
 
             if (Array.isArray(response.data)) {
                 const notesFromApi = response.data;
@@ -43,49 +103,50 @@ const NotesFeed = () => {
                     title: note.title,
                     courseName: note.courseName || 'Bilinmiyor',
                     courseId: note.courseId, 
-                    communityId: note.communityId || null, 
+                    userId: note.userId,
                     author: note.userFullName || 'Yazar Bilinmiyor',
-                    authorAvatar: note.userProfilePictureUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(note.userFullName || 'User')}&background=random&color=fff&rounded=true&bold=true`,
+                    authorAvatar: note.userProfilePictureUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(note.userFullName || 'U')}&background=random&color=fff&rounded=true&bold=true&size=128`,
                     likes: note.likesCount || 0,
-                    commentsCount: note.commentsCount || 0,
-                    date: new Date(note.publishDate || note.createdAt).toLocaleDateString('tr-TR'), 
+                    commentsCount: note.commentsCount || 0, // Backend'den geliyorsa
+                    date: new Date(note.publishDate || note.createdAt).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' }), 
                     description: note.content || note.description || 'İçerik bulunmuyor.',
                 }));
                 setNotes(formattedNotes);
+                
                 const courseCounts = formattedNotes.reduce((acc, note) => {
                     if (note.courseId && note.courseName && note.courseName !== 'Bilinmiyor') {
                         acc[note.courseId] = acc[note.courseId] || {
                             id: note.courseId,
                             name: note.courseName,
                             noteCount: 0,
-                            icon: Icons.CourseDefault
+                            icon: Icons.CourseDefault 
                         };
                         acc[note.courseId].noteCount++;
                     }
                     return acc;
                 }, {});
-
                 const derivedCourses = Object.values(courseCounts)
                     .sort((a, b) => b.noteCount - a.noteCount)
-                    .slice(0, 5);
+                    .slice(0, 7); 
                 setTopCoursesAsCommunities(derivedCourses);
-                // --- Top 5 Kursu Hesaplama Sonu ---
-
             } else {
-                console.error('NotesFeed: Notlar beklenmeyen formatta geldi:', response.data);
                 setNotes([]);
-                setNotesError("Notlar yüklenemedi (format hatası).");
+                setTopCoursesAsCommunities([]);
+                const errMsg = "Notlar yüklenemedi (beklenmedik format).";
+                setNotesError(errMsg);
+                setSidebarError("Popüler dersler için veri formatı hatalı.");
             }
         } catch (err) {
             console.error('NotesFeed: Notları Çekme Hatası:', err);
             setNotes([]);
+            setTopCoursesAsCommunities([]);
+            let mainErrorMsg = 'Notlar yüklenemedi veya sunucuya ulaşılamadı.';
             if (axios.isAxiosError(err) && err.response) {
                 const backendError = err.response.data;
-                console.error('NotesFeed: Backend Hata Detayı (Notları Çekerken):', backendError);
-                setNotesError(backendError.message || backendError.title || 'Notlar yüklenirken bir hata oluştu.');
-            } else {
-                setNotesError('Notlar yüklenirken beklenmedik bir sorun oluştu veya sunucuya ulaşılamadı.');
+                mainErrorMsg = backendError?.message || backendError?.title || 'Notlar yüklenirken bir sunucu hatası oluştu.';
             }
+            setNotesError(mainErrorMsg);
+            setSidebarError("Popüler dersler listesi yüklenemedi.");
         } finally {
             setLoadingNotes(false);
         }
@@ -95,195 +156,256 @@ const NotesFeed = () => {
         const token = localStorage.getItem('token');
         if (token) {
             try {
-                jwtDecode(token);
+                jwtDecode(token); 
                 fetchNotes(token);
             } catch (error) {
-                console.error("NotesFeed: Invalid token:", error);
-                setNotesError("Geçersiz kimlik doğrulama tokenı. Lütfen tekrar giriş yapın.");
+                console.error("NotesFeed: Geçersiz token veya fetch hatası:", error);
+                setNotesError("Oturumunuz geçersiz veya bir sorun oluştu. Lütfen tekrar giriş yapın.");
+                setSidebarError("Oturumunuz geçersiz olduğu için popüler dersler yüklenemedi.");
                 setLoadingNotes(false);
+                // navigate('/login'); // Opsiyonel: Hata durumunda login'e yönlendirme
             }
         } else {
             setNotesError("Notları görmek için giriş yapmanız gerekiyor.");
+            setSidebarError("Popüler dersleri görmek için giriş yapmanız gerekiyor.");
             setLoadingNotes(false);
+            // navigate('/login'); // Opsiyonel: Token yoksa login'e yönlendirme
         }
     }, []);
 
     const handleNoteShared = (newNoteResponse) => {
-        console.log("NotesFeed: Yeni not paylaşıldı (backend response):", newNoteResponse);
-        
-        const formattedNewNote = {
-            id: newNoteResponse.id,
-            title: newNoteResponse.title,
-            courseName: newNoteResponse.courseName || 'Bilinmiyor',
-            courseId: newNoteResponse.courseId,
-            communityId: newNoteResponse.communityId || null,
-            author: newNoteResponse.userFullName || 'Yazar Bilinmiyor',
-            authorAvatar: newNoteResponse.userProfilePictureUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(newNoteResponse.userFullName || 'User')}&background=random&color=fff&rounded=true&bold=true`,
-            likes: newNoteResponse.likesCount || 0,
-            commentsCount: newNoteResponse.commentsCount || 0,
-            date: new Date(newNoteResponse.createdAt || newNoteResponse.publishDate).toLocaleDateString('tr-TR'),
-            description: newNoteResponse.content || newNoteResponse.description || 'İçerik bulunmuyor.',
-        };
-        setNotes(prevNotes => [formattedNewNote, ...prevNotes]);
-    
-        fetchNotes(localStorage.getItem('token')); // Veya sadece topCoursesAsCommunities'i yeniden hesapla
-        setIsCreatingNote(false);
+        fetchNotes(localStorage.getItem('token'));
     };
 
-    // Notları filtrele ve sırala
     const displayedNotes = useMemo(() => {
-        let AFilteredNotes = notes;
+        let notesToDisplay = notes;
         if (selectedCourseFilter) {
-            AFilteredNotes = notes.filter(note => note.courseId === selectedCourseFilter);
+            notesToDisplay = notes.filter(note => note.courseId === selectedCourseFilter);
         }
-        return [...AFilteredNotes].sort((a, b) => {
-         
-            const dateA = new Date(a.date.split('.').reverse().join('-')); // DD.MM.YYYY -> YYYY-MM-DD varsayımıyla
-            const dateB = new Date(b.date.split('.').reverse().join('-'));
-            return dateB - dateA;
+        return [...notesToDisplay].sort((a, b) => {
+            try {
+                const datePartsA = a.date.split('.');
+                const dateA = new Date(+datePartsA[2], +datePartsA[1] - 1, +datePartsA[0]);
+                const datePartsB = b.date.split('.');
+                const dateB = new Date(+datePartsB[2], +datePartsB[1] - 1, +datePartsB[0]);
+                return dateB.getTime() - dateA.getTime();
+            } catch (e) { return 0; }
         });
     }, [notes, selectedCourseFilter]);
 
-    const handleLike = async (e, noteId) => { /* ... (NotesFeed'deki handleLike güncellenmeli, Community.js'deki gibi API call yapmalı) ... */ };
-    const handleCommentClick = (e, noteId) => { /* ... (Mevcut haliyle kalabilir) ... */ };
-    const handleCreateNoteClick = () => setIsCreatingNote(true);
-    const handleCancelCreateNote = () => setIsCreatingNote(false);
+    const handleLikeNoteCard = async (noteId) => {
+        console.log(`NotesFeed: Not ${noteId} için beğenme işlemi (API call yapılacak).`);
+        // Bu fonksiyonun içini API çağrılarınızla doldurmanız veya
+        // her not kartı için ayrı bir LikeButton bileşeni kullanmanız gerekebilir.
+    };
+    
+    const handleOpenShareNoteModal = () => setIsCreatingNote(true);
+    const handleCloseShareNoteModal = () => setIsCreatingNote(false);
+    const handleOpenDetailModal = (noteId) => setViewingNoteId(noteId);
+    const handleCloseDetailModal = () => setViewingNoteId(null);
 
-    const communitiesForShareNote = topCoursesAsCommunities.map(tc => ({id: tc.id, name: tc.name}));
+    const stickySidebarTopOffset = "top-[calc(4rem+1.5rem)]"; 
 
+    const handleCourseFilterClick = (courseId) => {
+        setSelectedCourseFilter(courseId);
+        if (courseId) {
+            navigate(`/notes?courseId=${courseId}`, { replace: true });
+        } else {
+            navigate('/notes', { replace: true });
+        }
+    };
 
     return (
-        <div className="min-h-screen bg-gray-100 py-8 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-8">
-                {/* Sol Sütun: Artık Top Kurslar */}
-                <div className="lg:col-span-1">
-                    <div className="bg-white rounded-xl shadow-lg p-6 sticky top-8">
-                        <h3 className="text-xl font-semibold text-gray-700 mb-6 flex items-center">
-                            <span className="text-indigo-500 mr-3 text-2xl">{Icons.Community}</span> Popüler Dersler
-                        </h3>
-                        {loadingNotes ? <p>Yükleniyor...</p> : (
-                            <ul className="space-y-3">
-                                <button
-                                    onClick={() => setSelectedCourseFilter(null)}
-                                    className={`w-full flex items-center p-3 rounded-lg transition-colors duration-200 cursor-pointer ${!selectedCourseFilter ? 'bg-indigo-100 text-indigo-800 font-bold' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium'}`}
-                                >
-                                    <span className="text-xl mr-3 text-gray-500">{Icons.Note}</span> Tüm Notlar ({notes.length})
-                                </button>
-                                {topCoursesAsCommunities.map(course => (
-                                    <button
-                                        key={course.id} // courseId
-                                        onClick={() => setSelectedCourseFilter(course.id)}
-                                        className={`w-full flex items-center p-3 rounded-lg transition-colors duration-200 cursor-pointer ${selectedCourseFilter === course.id ? 'bg-indigo-100 text-indigo-800 font-bold' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium'}`}
-                                    >
-                                        <span className="text-xl mr-3">{course.icon}</span>
-                                        <span className="flex-grow text-sm text-left">{course.name}</span>
-                                        <span className="text-xs text-gray-500 ml-2">{course.noteCount} Not</span>
-                                    </button>
-                                ))}
-                            </ul>
-                        )}
-                    </div>
-                </div>
+        <div className="min-h-screen bg-slate-100">
+            <Header
+                logoSrc="/logo3.jpg" 
+                siteName="NotEvreni" 
+                isCreatingNote={isCreatingNote}
+                onCreateNoteClick={handleOpenShareNoteModal}
+                onCancelCreateNote={handleCloseShareNoteModal}
+                profilePath="/profile"
+                user={currentUser} // Güncellenmiş currentUser bilgisi Header'a iletiliyor
+                icons={Icons} 
+            />
 
-                {/* Sağ Sütun: Not Akışı veya Not Oluşturma Formu */}
-                <div className="lg:col-span-3 space-y-6">
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 tracking-tight">
-                            {isCreatingNote ? 'Yeni Not Oluştur' : 
-                             selectedCourseFilter ? topCoursesAsCommunities.find(c => c.id === selectedCourseFilter)?.name + ' Notları' : 'Son Paylaşımlar'}
-                        </h2>
-                        {/* ... (Profil ve Not Oluştur/İptal butonları aynı kalabilir) ... */}
-                         <div className="flex items-center space-x-3">
-                             {!isCreatingNote && (
-                                 <Link
-                                     to="/profile"
-                                     className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                 >
-                                     Profil
-                                 </Link>
-                             )}
-                             {!isCreatingNote ? (
-                                 <button
-                                     onClick={handleCreateNoteClick}
-                                     className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                                 >
-                                     <span className="mr-2 text-lg">{Icons.PlusCircle}</span> Not Oluştur
-                                 </button>
-                             ) : (
-                                 <button
-                                     onClick={handleCancelCreateNote}
-                                     className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                 >
-                                     İptal
-                                 </button>
-                             )}
-                         </div>
+            <main className="py-6 sm:py-8 px-4 sm:px-6 lg:px-8">
+                <div className="max-w-7xl mx-auto">
+                    <div className="mb-6 sm:mb-8">
+                        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">
+                            {selectedCourseFilter && !isCreatingNote ? 
+                                (topCoursesAsCommunities.find(c => c.id === selectedCourseFilter)?.name || 'Ders') + ' Notları' 
+                                : 'Son Paylaşımlar'}
+                        </h1>
                     </div>
 
-                    {loadingNotes && <div className="text-center text-gray-600 py-16"><p>Notlar yükleniyor...</p></div>}
-                    {notesError && <div className="text-center text-red-600 py-16"><p>Hata: {notesError}</p></div>}
-                    
-                    {!loadingNotes && !notesError && !isCreatingNote && (
-                        displayedNotes.length > 0 ? (
-                            <div className="space-y-6">
-                                {displayedNotes.map(note => (
-                                   // Not kartı JSX'i aynı kalabilir
-                                   <div key={note.id} className="bg-white p-5 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-200 flex flex-col">
-                                       <div className="flex items-center mb-4">
-                                           <img src={note.authorAvatar} alt={note.author} className="w-10 h-10 rounded-full mr-3 border-2 border-indigo-200" />
-                                           <div>
-                                               <span className="text-sm font-semibold text-gray-700">{note.author}</span>
-                                               <p className="text-xs text-gray-500">{note.courseName}</p> {/* courseName olarak güncelledim */}
-                                           </div>
-                                       </div>
-                                       <h3 className="text-lg font-semibold text-indigo-700 mb-2">{note.title}</h3>
-                                       <p className="text-sm text-gray-600 mb-4 line-clamp-3">{note.description}</p>
-                                       <div className="flex justify-between items-center text-xs text-gray-500 pt-3 border-t border-gray-100 mt-auto">
-                                           <span className="flex items-center">
-                                               {Icons.Calendar} <span className="ml-1.5">{note.date}</span>
-                                           </span>
-                                           <div className="flex items-center space-x-4">
-                                               <button
-                                                    onClick={(e) => handleLike(e, note.id)} // Bu fonksiyonu API call yapacak şekilde güncellemeniz gerek
-                                                    className="flex items-center text-red-500 hover:text-red-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-50"
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+                        <aside className="lg:col-span-3 xl:col-span-3">
+                            <div className={`bg-white rounded-xl shadow-lg p-5 md:p-6 sticky ${stickySidebarTopOffset}`}>
+                                <h2 className="text-lg sm:text-xl font-semibold text-slate-700 mb-5 flex items-center">
+                                    <span className="text-indigo-500 mr-2.5 text-2xl">{Icons.Community}</span> Popüler Dersler
+                                </h2>
+                                {loadingNotes && !topCoursesAsCommunities.length && !sidebarError ? (
+                                    <div className="space-y-3">
+                                        {[...Array(5)].map((_, i) => (
+                                            <div key={i} className="h-12 bg-slate-200 rounded-lg animate-pulse"></div>
+                                        ))}
+                                    </div>
+                                ) : sidebarError && !topCoursesAsCommunities.length ? (
+                                    <p className="text-sm text-red-600 bg-red-50 p-3 rounded-md">{sidebarError}</p>
+                                 ) : (
+                                    <ul className="space-y-2.5">
+                                        <li>
+                                            <button
+                                                onClick={() => handleCourseFilterClick(null)}
+                                                className={`w-full flex items-center p-3 rounded-lg transition-all duration-200 text-left ${!selectedCourseFilter ? 'bg-indigo-600 text-white font-semibold shadow-md hover:bg-indigo-700' : 'bg-slate-100 hover:bg-indigo-100 text-slate-700 font-medium hover:text-indigo-700'}`}
+                                            >
+                                                <span className={`text-xl mr-3 ${!selectedCourseFilter ? 'text-indigo-200' : 'text-slate-400'}`}>{Icons.Note}</span>
+                                                <span className="flex-grow text-sm">Tüm Notlar</span>
+                                                <span className={`text-xs ml-2 px-1.5 py-0.5 rounded-full ${!selectedCourseFilter ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-600'}`}>{notes.length}</span>
+                                            </button>
+                                        </li>
+                                        {topCoursesAsCommunities.map(course => (
+                                            <li key={course.id}>
+                                                <button
+                                                    onClick={() => handleCourseFilterClick(course.id)}
+                                                    className={`w-full flex items-center p-3 rounded-lg transition-all duration-200 text-left ${selectedCourseFilter === course.id ? 'bg-indigo-600 text-white font-semibold shadow-md hover:bg-indigo-700' : 'bg-slate-100 hover:bg-indigo-100 text-slate-700 font-medium hover:text-indigo-700'}`}
                                                 >
-                                                    {Icons.ThumbUp} <span className="ml-1.5 font-medium">{note.likes}</span>
+                                                    <span className={`text-xl mr-3 ${selectedCourseFilter === course.id ? 'text-indigo-200' : 'text-slate-400'}`}>{course.icon || Icons.CourseDefault}</span>
+                                                    <span className="flex-grow text-sm truncate" title={course.name}>{course.name}</span>
+                                                    <span className={`text-xs ml-2 px-1.5 py-0.5 rounded-full ${selectedCourseFilter === course.id ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-600'}`}>{course.noteCount}</span>
                                                 </button>
-                                                
-                                           </div>
-                                       </div>
-                                       <Link
-                                           to={`/not/${note.id}`}
-                                           className="mt-4 w-full text-sm text-indigo-600 font-semibold py-2.5 px-4 border-2 border-indigo-500 rounded-lg hover:bg-indigo-500 hover:text-white text-center transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-opacity-50"
-                                       >
-                                           Detayı Oku
-                                       </Link>
-                                   </div>
-                                ))}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
                             </div>
-                        ) : (
-                            <div className="text-center text-gray-500 py-16 bg-white rounded-lg shadow-lg">
-                                <p className="text-xl mb-2">{Icons.Note}</p>
-                                <p className="font-semibold">
-                                    {selectedCourseFilter ? "Bu derse ait henüz not paylaşılmamış." : "Henüz hiç not paylaşılmamış."}
-                                </p>
-                                <p className="text-sm mt-1">İlk notunu paylaşarak bu alanı canlandır!</p>
-                            </div>
-                        )
-                    )}
+                        </aside>
 
-                    {isCreatingNote && (
-                        <ShareNote
-                            setIsCreatingNote={setIsCreatingNote}
-                            onNoteShared={handleNoteShared}
-                            onCancel={handleCancelCreateNote}
-                     
-                        />
-                    )}
+                        <section className="lg:col-span-9 xl:col-span-9 space-y-6">
+                            {loadingNotes && displayedNotes.length === 0 && !notesError ? (
+                                <div className="space-y-6">
+                                    {[...Array(3)].map((_, i) => (
+                                    <div key={i} className="bg-white p-6 rounded-xl shadow-lg animate-pulse">
+                                        <div className="flex items-center mb-4"><div className="w-11 h-11 rounded-full bg-slate-200 mr-3.5"></div><div><div className="h-4 bg-slate-200 rounded w-24 mb-1.5"></div><div className="h-3 bg-slate-200 rounded w-16"></div></div></div>
+                                        <div className="h-5 bg-slate-200 rounded w-3/4 mb-2.5"></div><div className="h-4 bg-slate-200 rounded w-full mb-1"></div><div className="h-4 bg-slate-200 rounded w-5/6 mb-1"></div><div className="h-4 bg-slate-200 rounded w-4/6 mb-4"></div><div className="h-10 bg-slate-200 rounded-lg mt-5"></div>
+                                    </div>
+                                    ))}
+                                </div>
+                            ) : notesError && displayedNotes.length === 0 ? (
+                                <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-6 rounded-lg text-center shadow"><p><strong className="font-semibold">Hata:</strong> {notesError}</p></div>
+                            ) : (!loadingNotes && !notesError && displayedNotes.length === 0) ? (
+                                <div className="text-center text-slate-600 py-16 bg-white rounded-xl shadow-lg border border-slate-200/80">
+                                    <p className="text-4xl mb-4 text-slate-400">{Icons.Note}</p>
+                                    <p className="font-semibold text-lg text-slate-700">
+                                        {selectedCourseFilter ? "Bu derse ait henüz not paylaşılmamış." : "Henüz hiç not paylaşılmamış."}
+                                    </p>
+                                    <p className="text-sm mt-2">İlk notu sen paylaşarak bu alanı canlandırabilirsin!</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-6">
+                                    {displayedNotes.map(note => (
+                                        <article key={note.id} className="bg-white p-5 sm:p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 ease-in-out border border-slate-200/80 flex flex-col transform hover:-translate-y-1">
+                                            <div className="flex items-center mb-4">
+                                                <img src={note.authorAvatar} alt={note.author} className="w-10 h-10 sm:w-11 sm:h-11 rounded-full mr-3.5 border-2 border-indigo-100 object-cover shadow-sm" />
+                                                <div>
+                                                    <Link to={`/profil/${note.userId}`} className="text-sm font-semibold text-slate-800 hover:text-indigo-600 transition-colors block">{note.author}</Link>
+                                                    <Link to={`/notes?courseId=${note.courseId}`} className="text-xs text-slate-500 hover:text-indigo-600 transition-colors block">{note.courseName}</Link>
+                                                </div>
+                                            </div>
+                                            <h2 className="text-lg sm:text-xl font-semibold text-indigo-700 mb-2 hover:text-indigo-800 transition-colors">
+                                                <button onClick={() => handleOpenDetailModal(note.id)} className="text-left hover:underline focus:outline-none">{note.title}</button>
+                                            </h2>
+                                            <p className="text-sm text-slate-600 mb-4 line-clamp-3 leading-relaxed flex-grow">{note.description}</p>
+                                            <div className="flex flex-wrap gap-y-2 justify-between items-center text-xs text-slate-500 pt-3.5 border-t border-slate-100 mt-auto">
+                                                <span className="flex items-center">
+                                                    <span className="text-base mr-1">{Icons.Calendar}</span> {note.date}
+                                                </span>
+                                                <button
+                                                    onClick={() => handleLikeNoteCard(note.id)}
+                                                    className="flex items-center text-slate-500 hover:text-red-500 transition-colors duration-200 focus:outline-none group"
+                                                    title="Beğen"
+                                                >
+                                                    <span className="text-base group-hover:text-red-500 transition-colors">{Icons.ThumbUp}</span> 
+                                                    <span className="ml-1 font-medium group-hover:text-red-500 transition-colors">{note.likes}</span>
+                                                </button>
+                                            </div>
+                                            <button
+                                                onClick={() => handleOpenDetailModal(note.id)}
+                                                className="mt-5 block w-full text-sm text-indigo-600 font-semibold py-2.5 px-4 border-2 border-indigo-500 rounded-lg hover:bg-indigo-600 hover:text-white text-center transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-opacity-50 transform hover:scale-[1.01]"
+                                            >
+                                                Detayı Oku
+                                            </button>
+                                        </article>
+                                    ))}
+                                </div>
+                            )}
+                        </section>
+                    </div>
                 </div>
-            </div>
+            </main>
+
+            {isCreatingNote && (
+                <div 
+                    className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 transition-opacity duration-300 ease-in-out animate-fadeIn"
+                    onClick={handleCloseShareNoteModal} 
+                >
+                    <div 
+                        className="w-full animate-modalShow"
+                        onClick={(e) => e.stopPropagation()} 
+                    >
+                        <ShareNote
+                            onNoteShared={handleNoteShared} 
+                            onCancel={handleCloseShareNoteModal}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {viewingNoteId && (
+                <div 
+                    className="fixed inset-0 z-[70] bg-slate-900/70 backdrop-blur-lg flex items-center justify-center p-4 sm:p-6 md:p-8 transition-opacity duration-300 ease-in-out animate-fadeIn"
+                    onClick={handleCloseDetailModal}
+                >
+                    <div 
+                        className="w-full animate-modalShow"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <Detail 
+                            noteId={viewingNoteId} 
+                            onClose={handleCloseDetailModal}
+                            isModalMode={true}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
 
 export default NotesFeed;
+
+/* Tailwind CSS Animasyonları (tailwind.config.js veya ana CSS dosyanıza):
+
+   // tailwind.config.js
+   module.exports = {
+     theme: {
+       extend: {
+         keyframes: {
+           fadeIn: {
+             '0%': { opacity: '0' },
+             '100%': { opacity: '1' },
+           },
+           modalShow: { 
+             '0%': { opacity: '0', transform: 'scale(0.97) translateY(10px)' },
+             '100%': { opacity: '1', transform: 'scale(1) translateY(0px)' },
+           }
+         },
+         animation: {
+           fadeIn: 'fadeIn 0.25s ease-out forwards',
+           modalShow: 'modalShow 0.3s ease-out forwards',
+         }
+       }
+     }
+     // ...
+   }
+*/
