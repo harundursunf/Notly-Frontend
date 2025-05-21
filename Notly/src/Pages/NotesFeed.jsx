@@ -195,8 +195,7 @@ const NotesFeed = () => {
 
     const handleLikeNoteCard = async (noteId) => {
         console.log(`NotesFeed: Not ${noteId} için beğenme işlemi (API call yapılacak).`);
-        // Bu fonksiyonun içini API çağrılarınızla doldurmanız veya
-        // her not kartı için ayrı bir LikeButton bileşeni kullanmanız gerekebilir.
+        
     };
     
     const handleOpenShareNoteModal = () => setIsCreatingNote(true);
@@ -383,29 +382,3 @@ const NotesFeed = () => {
 };
 
 export default NotesFeed;
-
-/* Tailwind CSS Animasyonları (tailwind.config.js veya ana CSS dosyanıza):
-
-   // tailwind.config.js
-   module.exports = {
-     theme: {
-       extend: {
-         keyframes: {
-           fadeIn: {
-             '0%': { opacity: '0' },
-             '100%': { opacity: '1' },
-           },
-           modalShow: { 
-             '0%': { opacity: '0', transform: 'scale(0.97) translateY(10px)' },
-             '100%': { opacity: '1', transform: 'scale(1) translateY(0px)' },
-           }
-         },
-         animation: {
-           fadeIn: 'fadeIn 0.25s ease-out forwards',
-           modalShow: 'modalShow 0.3s ease-out forwards',
-         }
-       }
-     }
-     // ...
-   }
-*/

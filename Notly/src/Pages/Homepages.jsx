@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
-// SVG Icons for features (simple placeholders, replace with your own or a library like Heroicons)
+
 const IconSearch = () => <svg className="w-8 h-8" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>;
 const IconUpload = () => <svg className="w-8 h-8" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>;
 const IconCollection = () => <svg className="w-8 h-8" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>;
@@ -77,7 +77,7 @@ const Homepage = () => {
     ];
 
     // **IMPORTANT**: Replace this with the actual path to YOUR beautiful photo that includes your logo
-    const userHeroImageWithPath = "/Logo.jpg"; // e.g., '/images/my-brand-hero.png'
+    const userHeroImageWithPath = "/Logo                                .jpg"; // e.g., '/images/my-brand-hero.png'
     // You can also use the image I generated: 'REPLACE_WITH_GENERATED_IMAGE_CONTENT_ID' (see link above the code)
 
     // This is for your separate logo file (e.g., a transparent PNG of just the logo mark/text)

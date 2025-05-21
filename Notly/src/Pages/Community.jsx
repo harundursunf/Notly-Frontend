@@ -17,9 +17,6 @@ const CommunityPage = () => {
     const [courseNotesError, setCourseNotesError] = useState(null);
     const [sidebarError, setSidebarError] = useState(null);
 
-    const Icons = { /* ... (NotesFeed'deki gibi) ... */
-        Calendar: '📅', ThumbUp: '👍', Note: '📄', CourseDefault: '📚' // Community ikonu kaldırıldı
-    };
 
     useEffect(() => {
         const fetchAllNotesAndDeriveTopCourses = async () => {
