@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import ShareNote from './ShareNote';
-import Detail from './Detail';
+import ShareNote from './ShareNote'; 
+import Detail from './Detail';     
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
-import Header from '../Components/notes/Header'; // Header.jsx yolunuzu kontrol edin
+import Header from '../Components/notes/Header'; 
 
 const NotesFeed = () => {
     const [isCreatingNote, setIsCreatingNote] = useState(false);
@@ -23,13 +23,17 @@ const NotesFeed = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
+    // İkonları bir obje içinde tanımlamak daha düzenli
     const Icons = {
         Calendar: '📅',
         ThumbUp: '👍',
+        Comment: '💬', // Yorum ikonu eklendi (kullanılacaksa)
         Community: '👥', 
         Note: '📄',
         PlusCircle: '➕', 
-        CourseDefault: '📚', 
+        CourseDefault: '📚',
+        Image: '🖼️', // Resim ikonu
+        PDF: '📎',   // PDF ikonu
     };
 
     useEffect(() => {
@@ -37,6 +41,8 @@ const NotesFeed = () => {
         const courseIdFromUrl = queryParams.get('courseId');
         if (courseIdFromUrl) {
             setSelectedCourseFilter(parseInt(courseIdFromUrl, 10));
+        } else {
+            setSelectedCourseFilter(null); // URL'de courseId yoksa filtreyi temizle
         }
     }, [location.search]);
     
@@ -57,6 +63,7 @@ const NotesFeed = () => {
                             });
                             const userDataFromApi = response.data;
                             setCurrentUser({
+                                id: userId, // Kullanıcı ID'sini de saklayalım
                                 name: userDataFromApi.fullName || nameClaimValue,
                                 avatarUrl: userDataFromApi.profilePictureUrl || 
                                            `https://ui-avatars.com/api/?name=${encodeURIComponent(userDataFromApi.fullName || nameClaimValue)}&background=random&color=fff&rounded=true&bold=true&size=128`
@@ -64,6 +71,7 @@ const NotesFeed = () => {
                         } catch (apiError) {
                             console.error("NotesFeed: Header için kullanıcı detayları çekilemedi, token verileri kullanılacak:", apiError);
                             setCurrentUser({
+                                id: userId,
                                 name: nameClaimValue,
                                 avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(nameClaimValue)}&background=random&color=fff&rounded=true&bold=true&size=128`
                             });
@@ -72,19 +80,19 @@ const NotesFeed = () => {
                     fetchUserDetailsForHeader();
                 } else {
                     console.warn("NotesFeed: Header için token'da kullanıcı ID'si bulunamadı.");
-                    setCurrentUser({
+                    setCurrentUser({ 
                         name: nameClaimValue,
                         avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(nameClaimValue)}&background=random&color=fff&rounded=true&bold=true&size=128`
                     });
                 }
             } catch (error) {
                 console.error("NotesFeed: Token decode hatası (currentUser için):", error);
-                setCurrentUser(null);
+                setCurrentUser(null); 
             }
         } else {
-            setCurrentUser(null);
+            setCurrentUser(null); 
         }
-    }, []);
+    }, []); 
 
     const fetchNotes = async (token) => {
         setLoadingNotes(true);
@@ -107,9 +115,13 @@ const NotesFeed = () => {
                     author: note.userFullName || 'Yazar Bilinmiyor',
                     authorAvatar: note.userProfilePictureUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(note.userFullName || 'U')}&background=random&color=fff&rounded=true&bold=true&size=128`,
                     likes: note.likesCount || 0,
-                    commentsCount: note.commentsCount || 0, // Backend'den geliyorsa
-                    date: new Date(note.publishDate || note.createdAt).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' }), 
-                    description: note.content || note.description || 'İçerik bulunmuyor.',
+                    isLikedByCurrentUser: note.isLikedByCurrentUser || false, 
+                    currentUserLikeId: note.currentUserLikeId || null,      
+                    commentsCount: note.commentsCount || 0,
+                    date: new Date(note.createdAt).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }), 
+                    description: note.content || 'İçerik bulunmuyor.', 
+                    imageUrl: note.imageUrl || null,     
+                    pdfUrl: note.pdfUrl || null          
                 }));
                 setNotes(formattedNotes);
                 
@@ -144,6 +156,9 @@ const NotesFeed = () => {
             if (axios.isAxiosError(err) && err.response) {
                 const backendError = err.response.data;
                 mainErrorMsg = backendError?.message || backendError?.title || 'Notlar yüklenirken bir sunucu hatası oluştu.';
+                if (err.response.status === 401) { // Yetkilendirme hatası
+                    mainErrorMsg = "Oturumunuz zaman aşımına uğramış veya geçersiz. Lütfen tekrar giriş yapın.";
+                }
             }
             setNotesError(mainErrorMsg);
             setSidebarError("Popüler dersler listesi yüklenemedi.");
@@ -163,18 +178,22 @@ const NotesFeed = () => {
                 setNotesError("Oturumunuz geçersiz veya bir sorun oluştu. Lütfen tekrar giriş yapın.");
                 setSidebarError("Oturumunuz geçersiz olduğu için popüler dersler yüklenemedi.");
                 setLoadingNotes(false);
-                // navigate('/login'); // Opsiyonel: Hata durumunda login'e yönlendirme
+              
             }
         } else {
             setNotesError("Notları görmek için giriş yapmanız gerekiyor.");
             setSidebarError("Popüler dersleri görmek için giriş yapmanız gerekiyor.");
             setLoadingNotes(false);
-            // navigate('/login'); // Opsiyonel: Token yoksa login'e yönlendirme
+           
         }
-    }, []);
+    }, []); 
 
     const handleNoteShared = (newNoteResponse) => {
-        fetchNotes(localStorage.getItem('token'));
+        const token = localStorage.getItem('token');
+        if (token) {
+            fetchNotes(token);
+        }
+        setIsCreatingNote(false); 
     };
 
     const displayedNotes = useMemo(() => {
@@ -182,20 +201,67 @@ const NotesFeed = () => {
         if (selectedCourseFilter) {
             notesToDisplay = notes.filter(note => note.courseId === selectedCourseFilter);
         }
+    
         return [...notesToDisplay].sort((a, b) => {
-            try {
-                const datePartsA = a.date.split('.');
-                const dateA = new Date(+datePartsA[2], +datePartsA[1] - 1, +datePartsA[0]);
-                const datePartsB = b.date.split('.');
-                const dateB = new Date(+datePartsB[2], +datePartsB[1] - 1, +datePartsB[0]);
-                return dateB.getTime() - dateA.getTime();
-            } catch (e) { return 0; }
+      
+             try {
+                
+                return new Date(b.createdAtForSort || b.date) - new Date(a.createdAtForSort || a.date);
+             } catch(e) { return 0; }
         });
     }, [notes, selectedCourseFilter]);
 
-    const handleLikeNoteCard = async (noteId) => {
-        console.log(`NotesFeed: Not ${noteId} için beğenme işlemi (API call yapılacak).`);
+    const handleLikeDislikeNote = async (noteId, isCurrentlyLiked, likeId) => {
+        const token = localStorage.getItem('token');
+        if (!token || !currentUser || !currentUser.id) {
+            setNotesError("Beğeni işlemi için giriş yapmalısınız.");
+            return;
+        }
+
+        const originalNotes = [...notes]; 
+
+      
+        setNotes(prevNotes => prevNotes.map(n => {
+            if (n.id === noteId) {
+                return {
+                    ...n,
+                    likes: isCurrentlyLiked ? n.likes - 1 : n.likes + 1,
+                    isLikedByCurrentUser: !isCurrentlyLiked,
+                
+                };
+            }
+            return n;
+        }));
+
+        try {
+            if (isCurrentlyLiked) {
+                // Dislike (unlike)
+                if (likeId) {
+                    await axios.delete(`https://localhost:7119/api/Likes/${likeId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                } else {
+                  
+                    console.warn(`Like ID not found for unliking note ${noteId}`);
+                    throw new Error("Beğeni kaldırma işlemi için gerekli bilgi eksik.");
+                }
+            } else {
+                // Like
+                await axios.post('https://localhost:7119/api/Likes', {
+                    userId: parseInt(currentUser.id), 
+                    noteId: noteId
+                }, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            }
         
+            fetchNotes(token);
+
+        } catch (err) {
+            console.error('NotesFeed: Beğeni/Beğeni Kaldırma Hatası:', err);
+            setNotes(originalNotes); // Hata durumunda optimistic update'i geri al
+            setNotesError(err.response?.data?.message || "Beğeni işlemi sırasında bir hata oluştu.");
+        }
     };
     
     const handleOpenShareNoteModal = () => setIsCreatingNote(true);
@@ -221,9 +287,9 @@ const NotesFeed = () => {
                 siteName="NotEvreni" 
                 isCreatingNote={isCreatingNote}
                 onCreateNoteClick={handleOpenShareNoteModal}
-                onCancelCreateNote={handleCloseShareNoteModal}
-                profilePath="/profile"
-                user={currentUser} // Güncellenmiş currentUser bilgisi Header'a iletiliyor
+                onCancelCreateNote={handleCloseShareNoteModal} // Bu prop Header'da kullanılmıyorsa kaldırılabilir
+                profilePath="/profile" // veya /profile/${currentUser?.id}
+                user={currentUser}
                 icons={Icons} 
             />
 
@@ -251,7 +317,9 @@ const NotesFeed = () => {
                                     </div>
                                 ) : sidebarError && !topCoursesAsCommunities.length ? (
                                     <p className="text-sm text-red-600 bg-red-50 p-3 rounded-md">{sidebarError}</p>
-                                 ) : (
+                                 ) : topCoursesAsCommunities.length === 0 && !loadingNotes && !sidebarError ? (
+                                    <p className="text-sm text-slate-500">Popüler ders bulunmuyor.</p>
+                                ) : (
                                     <ul className="space-y-2.5">
                                         <li>
                                             <button
@@ -315,17 +383,45 @@ const NotesFeed = () => {
                                                 <button onClick={() => handleOpenDetailModal(note.id)} className="text-left hover:underline focus:outline-none">{note.title}</button>
                                             </h2>
                                             <p className="text-sm text-slate-600 mb-4 line-clamp-3 leading-relaxed flex-grow">{note.description}</p>
+                                            
+                                            {/* RESİM GÖSTERİMİ */}
+                                            {note.imageUrl && (
+                                                <div className="my-4">
+                                                    <img 
+                                                        src={note.imageUrl}  // Backend'den gelen mutlak URL olmalı
+                                                        alt={`Not için resim: ${note.title}`} 
+                                                        className="max-w-full h-auto rounded-lg shadow-md mx-auto" 
+                                                        style={{ maxHeight: '400px' }} // İsteğe bağlı: maksimum yükseklik
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* PDF BAĞLANTISI */}
+                                            {note.pdfUrl && (
+                                                <div className="my-3">
+                                                    <a 
+                                                        href={note.pdfUrl} // Backend'den gelen mutlak URL olmalı
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium py-1 px-3 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors"
+                                                    >
+                                                        <span className="text-lg mr-2">{Icons.PDF}</span>
+                                                        PDF Görüntüle/İndir
+                                                    </a>
+                                                </div>
+                                            )}
+
                                             <div className="flex flex-wrap gap-y-2 justify-between items-center text-xs text-slate-500 pt-3.5 border-t border-slate-100 mt-auto">
                                                 <span className="flex items-center">
                                                     <span className="text-base mr-1">{Icons.Calendar}</span> {note.date}
                                                 </span>
                                                 <button
-                                                    onClick={() => handleLikeNoteCard(note.id)}
-                                                    className="flex items-center text-slate-500 hover:text-red-500 transition-colors duration-200 focus:outline-none group"
-                                                    title="Beğen"
+                                                    onClick={() => handleLikeDislikeNote(note.id, note.isLikedByCurrentUser, note.currentUserLikeId)}
+                                                    className={`flex items-center transition-colors duration-200 focus:outline-none group ${note.isLikedByCurrentUser ? 'text-red-500 hover:text-red-600' : 'text-slate-500 hover:text-red-500'}`}
+                                                    title={note.isLikedByCurrentUser ? "Beğeniyi Geri Al" : "Beğen"}
                                                 >
-                                                    <span className="text-base group-hover:text-red-500 transition-colors">{Icons.ThumbUp}</span> 
-                                                    <span className="ml-1 font-medium group-hover:text-red-500 transition-colors">{note.likes}</span>
+                                                    <span className={`text-base transition-colors ${note.isLikedByCurrentUser ? 'text-red-500' : 'group-hover:text-red-500'}`}>{Icons.ThumbUp}</span> 
+                                                    <span className={`ml-1 font-medium transition-colors ${note.isLikedByCurrentUser ? 'text-red-500' : 'group-hover:text-red-500'}`}>{note.likes}</span>
                                                 </button>
                                             </div>
                                             <button
@@ -346,11 +442,16 @@ const NotesFeed = () => {
             {isCreatingNote && (
                 <div 
                     className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 transition-opacity duration-300 ease-in-out animate-fadeIn"
-                    onClick={handleCloseShareNoteModal} 
+                    onClick={(e) => {
+                        // Sadece dış alana tıklandığında kapat
+                        if (e.target === e.currentTarget) {
+                            handleCloseShareNoteModal();
+                        }
+                    }}
                 >
                     <div 
                         className="w-full animate-modalShow"
-                        onClick={(e) => e.stopPropagation()} 
+                        // onClick={(e) => e.stopPropagation()} // Bu satır kaldırıldı, yukarıdaki mantıkla birleşti
                     >
                         <ShareNote
                             onNoteShared={handleNoteShared} 
@@ -363,16 +464,25 @@ const NotesFeed = () => {
             {viewingNoteId && (
                 <div 
                     className="fixed inset-0 z-[70] bg-slate-900/70 backdrop-blur-lg flex items-center justify-center p-4 sm:p-6 md:p-8 transition-opacity duration-300 ease-in-out animate-fadeIn"
-                    onClick={handleCloseDetailModal}
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) {
+                            handleCloseDetailModal();
+                        }
+                    }}
                 >
                     <div 
                         className="w-full animate-modalShow"
-                        onClick={(e) => e.stopPropagation()}
+                        // onClick={(e) => e.stopPropagation()} // Bu satır kaldırıldı
                     >
                         <Detail 
                             noteId={viewingNoteId} 
                             onClose={handleCloseDetailModal}
                             isModalMode={true}
+                            onNoteUpdated={() => fetchNotes(localStorage.getItem('token'))} // Detayda not güncellenirse listeyi yenile
+                            onNoteDeleted={() => {
+                                fetchNotes(localStorage.getItem('token'));
+                                handleCloseDetailModal(); // Silindikten sonra detay modalını kapat
+                            }}
                         />
                     </div>
                 </div>
