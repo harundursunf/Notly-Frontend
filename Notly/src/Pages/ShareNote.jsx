@@ -1,3 +1,5 @@
+// src/Components/notes/ShareNote.jsx
+
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
@@ -7,19 +9,16 @@ export default function ShareNote({ onNoteShared, onCancel }) {
     const [content, setContent] = useState('');
     const [userCourses, setUserCourses] = useState([]);
     const [selectedCourseId, setSelectedCourseId] = useState('');
-
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
-
     const [userId, setUserId] = useState(null);
     const [userFullName, setUserFullName] = useState('');
-
     const [loadingUserCourses, setLoadingUserCourses] = useState(false);
     const [userCoursesError, setUserCoursesError] = useState(null);
 
-    const [selectedImage, setSelectedImage] = useState(null);
-    const [selectedPdf, setSelectedPdf] = useState(null);
+    const [selectedImages, setSelectedImages] = useState([]);
+    const [selectedPdfs, setSelectedPdfs] = useState([]);
 
 
     useEffect(() => {
@@ -74,6 +73,32 @@ export default function ShareNote({ onNoteShared, onCancel }) {
         }
     }, [userId]);
 
+    // --- DOSYA EKLEME FONKSİYONLARI GÜNCELLENDİ ---
+    const handleImageChange = (e) => {
+        if (e.target.files) {
+            const newFiles = Array.from(e.target.files);
+            // Mevcut listenin üzerine yeni seçilenleri ekle
+            setSelectedImages(prevImages => [...prevImages, ...newFiles]);
+        }
+    };
+
+    const handlePdfChange = (e) => {
+        if (e.target.files) {
+            const newFiles = Array.from(e.target.files);
+            // Mevcut listenin üzerine yeni seçilenleri ekle
+            setSelectedPdfs(prevPdfs => [...prevPdfs, ...newFiles]);
+        }
+    };
+
+    // --- DOSYA SİLME FONKSİYONLARI EKLENDİ ---
+    const handleRemoveImage = (fileNameToRemove) => {
+        setSelectedImages(prevImages => prevImages.filter(file => file.name !== fileNameToRemove));
+    };
+
+    const handleRemovePdf = (fileNameToRemove) => {
+        setSelectedPdfs(prevPdfs => prevPdfs.filter(file => file.name !== fileNameToRemove));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -99,28 +124,20 @@ export default function ShareNote({ onNoteShared, onCancel }) {
         const formData = new FormData();
         formData.append('title', title.trim());
         formData.append('content', content.trim());
-        formData.append('createdAt', new Date().toISOString()); // Backend'de de set edilebilir
-        formData.append('userId', userId); // Backend zaten token'dan alacak, ama DTO'da varsa gönderilebilir.
-        // NotesController'da currentUserId ile üzerine yazılıyor.
+        formData.append('createdAt', new Date().toISOString());
         formData.append('courseId', selectedCourseId);
 
-
-        const selectedCourse = userCourses.find(course => course.id.toString() === selectedCourseId.toString());
-        if (selectedCourse) {
-            formData.append('courseName', selectedCourse.name);
-        }
-        if (userFullName) {
-            formData.append('userFullName', userFullName);
+        if (selectedImages.length > 0) {
+            selectedImages.forEach((image) => {
+                formData.append('imageFiles', image, image.name);
+            });
         }
 
-
-        if (selectedImage) {
-            formData.append('imageFile', selectedImage, selectedImage.name); // Backend'de beklenen parametre adı 'imageFile'
+        if (selectedPdfs.length > 0) {
+            selectedPdfs.forEach((pdf) => {
+                formData.append('pdfFiles', pdf, pdf.name);
+            });
         }
-        if (selectedPdf) {
-            formData.append('pdfFile', selectedPdf, selectedPdf.name); // Backend'de beklenen parametre adı 'pdfFile'
-        }
-
 
         const token = localStorage.getItem('token');
         if (!token) {
@@ -132,7 +149,6 @@ export default function ShareNote({ onNoteShared, onCancel }) {
         try {
             const response = await axios.post('https://localhost:7119/api/Notes', formData, {
                 headers: {
-
                     'Authorization': `Bearer ${token}`
                 }
             });
@@ -140,12 +156,12 @@ export default function ShareNote({ onNoteShared, onCancel }) {
             setTitle('');
             setContent('');
             setSelectedCourseId(userCourses.length > 0 ? userCourses[0].id.toString() : '');
-            setSelectedImage(null);
-            setSelectedPdf(null);
+            setSelectedImages([]);
+            setSelectedPdfs([]);
 
-            const imageInput = document.getElementById('imageFile');
+            const imageInput = document.getElementById('imageFilesInput');
             if (imageInput) imageInput.value = null;
-            const pdfInput = document.getElementById('pdfFile');
+            const pdfInput = document.getElementById('pdfFilesInput');
             if (pdfInput) pdfInput.value = null;
 
             if (onNoteShared) {
@@ -161,7 +177,7 @@ export default function ShareNote({ onNoteShared, onCancel }) {
             let errorMessage = 'Not paylaşılırken bir hata oluştu.';
             if (err.response && err.response.data) {
                 const data = err.response.data;
-                if (data.errors && typeof data.errors === 'object') { // ASP.NET Core validasyon hataları
+                if (data.errors && typeof data.errors === 'object') {
                     const fieldErrors = Object.values(data.errors).flat();
                     errorMessage = fieldErrors.join(' ');
                 } else {
@@ -182,13 +198,13 @@ export default function ShareNote({ onNoteShared, onCancel }) {
         setTitle('');
         setContent('');
         setSelectedCourseId(userCourses.length > 0 ? userCourses[0].id.toString() : '');
-        setSelectedImage(null);
-        setSelectedPdf(null);
+        setSelectedImages([]);
+        setSelectedPdfs([]);
         setError(null);
         setSuccess(false);
-        const imageInput = document.getElementById('imageFile');
+        const imageInput = document.getElementById('imageFilesInput');
         if (imageInput) imageInput.value = null;
-        const pdfInput = document.getElementById('pdfFile');
+        const pdfInput = document.getElementById('pdfFilesInput');
         if (pdfInput) pdfInput.value = null;
 
         if (onCancel) {
@@ -271,24 +287,69 @@ export default function ShareNote({ onNoteShared, onCancel }) {
                     ></textarea>
                 </div>
 
+                {/* --- DOSYA LİSTESİ VE SİLME BUTONLARI GÜNCELLENDİ --- */}
                 <div>
-                    <label htmlFor="imageFile" className="block text-sm font-medium text-gray-700 mb-1">Resim (İsteğe Bağlı)</label>
+                    <label htmlFor="imageFilesInput" className="block text-sm font-medium text-gray-700 mb-1">Resimler (İsteğe Bağlı)</label>
                     <input
-                        type="file" id="imageFile" accept="image/png, image/jpeg, image/gif"
-                        onChange={(e) => setSelectedImage(e.target.files[0])}
+                        type="file"
+                        id="imageFilesInput"
+                        accept="image/png, image/jpeg, image/gif"
+                        multiple
+                        onChange={handleImageChange}
                         className="mt-1 block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                     />
-                    {selectedImage && <p className="text-xs text-gray-500 mt-1">Seçilen resim: {selectedImage.name}</p>}
+                    {selectedImages.length > 0 && (
+                        <div className="mt-2 text-xs text-gray-500">
+                            <p className="font-medium">Seçilen Resimler ({selectedImages.length} adet):</p>
+                            <ul className="list-none pt-2 space-y-1 max-h-24 overflow-y-auto">
+                                {selectedImages.map((file, index) => (
+                                    <li key={index} className="flex justify-between items-center bg-gray-50 p-1.5 rounded" title={file.name}>
+                                        <span className="truncate">{file.name} ({(file.size / 1024).toFixed(1)} KB)</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveImage(file.name)}
+                                            className="ml-2 text-red-500 hover:text-red-700 font-bold text-lg leading-none"
+                                            aria-label={`'${file.name}' resmini kaldır`}
+                                        >
+                                            &times;
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
                 </div>
 
                 <div>
-                    <label htmlFor="pdfFile" className="block text-sm font-medium text-gray-700 mb-1">PDF (İsteğe Bağlı)</label>
+                    <label htmlFor="pdfFilesInput" className="block text-sm font-medium text-gray-700 mb-1">PDF'ler (İsteğe Bağlı)</label>
                     <input
-                        type="file" id="pdfFile" accept="application/pdf"
-                        onChange={(e) => setSelectedPdf(e.target.files[0])}
+                        type="file"
+                        id="pdfFilesInput"
+                        accept="application/pdf"
+                        multiple
+                        onChange={handlePdfChange}
                         className="mt-1 block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                     />
-                    {selectedPdf && <p className="text-xs text-gray-500 mt-1">Seçilen PDF: {selectedPdf.name}</p>}
+                    {selectedPdfs.length > 0 && (
+                        <div className="mt-2 text-xs text-gray-500">
+                            <p className="font-medium">Seçilen PDF'ler ({selectedPdfs.length} adet):</p>
+                            <ul className="list-none pt-2 space-y-1 max-h-24 overflow-y-auto">
+                                {selectedPdfs.map((file, index) => (
+                                    <li key={index} className="flex justify-between items-center bg-gray-50 p-1.5 rounded" title={file.name}>
+                                        <span className="truncate">{file.name} ({(file.size / 1024).toFixed(1)} KB)</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemovePdf(file.name)}
+                                            className="ml-2 text-red-500 hover:text-red-700 font-bold text-lg leading-none"
+                                            aria-label={`'${file.name}' PDF'ini kaldır`}
+                                        >
+                                            &times;
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
                 </div>
 
                 {userFullName && (
